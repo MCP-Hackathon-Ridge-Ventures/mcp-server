@@ -44,7 +44,7 @@ class BuildService:
             print("📁 Template app copied successfully")
 
             # Write the custom index.jsx content as App.jsx
-            app_file_path = temp_app_dir / "App.jsx"
+            app_file_path = temp_app_dir / "src" / "App.jsx"
             with open(app_file_path, "w") as f:
                 f.write(app_jsx_content)
 
