@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from log import logger
-
 from src.supabase import supabase
 
 
@@ -164,6 +163,12 @@ class BuildService:
             dist_dir = build_dir / "dist"
             if not dist_dir.exists():
                 raise FileNotFoundError("dist folder not found after build!")
+
+            # Also write the app.jsx to the dist directory
+            if app_jsx_content:
+                app_jsx_path = dist_dir / "app.jsx"
+                with open(app_jsx_path, "w") as f:
+                    f.write(app_jsx_content)
 
             logger.info("📁 Found dist folder, scanning files...")
 

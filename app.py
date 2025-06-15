@@ -88,7 +88,7 @@ async def generate_mobile_app(user_request: str) -> dict[str, str]:
         }
 
 
-@mcp.tool()
+@mcp.resource()
 async def edit_mobile_app(user_request: str, deployment_id: str) -> dict[str, str]:
     """This is a tool to edit a mobile app based on any user request. If a user asks for a mobile app, this tool will be used to edit the app.
     The mobile app will be edited using the user request and the app will be sent to the user's phone.
