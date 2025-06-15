@@ -1,5 +1,0 @@
-app
-js_bundle_upload
-models
-rn_gen
-supabase
