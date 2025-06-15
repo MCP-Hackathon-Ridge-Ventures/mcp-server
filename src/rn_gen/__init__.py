@@ -7,10 +7,11 @@ import tempfile
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from log import logger
 from src.js_bundle_upload.main import build_app_local
 from src.models import MiniApp
 from src.supabase import supabase
-from log import logger
+
 from .prompt import METADATA_PROMPT, PROMPT
 from .utils import AppMetadata, AppSpec, OpenRouterClient, insert_into_db
 
@@ -28,7 +29,7 @@ def generate_app(user_request: str) -> AppSpec:
     Returns:
         str: The generated JSX code for the app.
     """
-    with open("src/rn_gen/prompt.txt", "r") as file:
+    with open(os.path.join(os.path.dirname(__file__), "prompt.txt"), "r") as file:
         prompt = file.read()
 
     prompt = PromptTemplate.from_template(PROMPT)

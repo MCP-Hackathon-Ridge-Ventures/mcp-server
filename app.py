@@ -1,21 +1,23 @@
+import asyncio
+import os
+import traceback
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
-from fastapi import FastAPI
-import asyncio
 import httpx
-from pydantic import Field
-
-from log import logger
-
+from fastapi import FastAPI
 from fastmcp import FastMCP
-
+from log import logger
+from pydantic import Field
 from src.rn_gen import build_and_upload_to_supabase, generate_app, generate_metadata
 
 BACKEND_URL = "http://localhost:8001"
 app = FastAPI(title="MicroApp")
+
+# Print all os env
+print(os.environ)
 
 
 async def generate_app_wrapper(user_request: str) -> dict:
@@ -34,7 +36,7 @@ async def create_app_request(user_request: str):
 
 
 # FastMCP app
-mcp = FastMCP(name="MicroApp", log_level="CRITICAL")
+mcp = FastMCP(name="MicroApp")
 
 
 @mcp.tool()
@@ -45,10 +47,18 @@ async def generate_mobile_app(user_request: str) -> bool:
     """
     try:
         result = await generate_app_wrapper(user_request)
-        return result.get("success", False)
+        return {
+            "message": "App generated successfully",
+            "result": str(result),
+        }
     except Exception as e:
-        logger.error(f"Error generating app: {e}")
-        return False
+        print("--------------------------------")
+        print(f"Error generating app: {e}")
+        print(traceback.format_exc())
+        return {
+            "message": "Error generating app",
+            "error": str(e),
+        }
 
 
 if __name__ == "__main__":
