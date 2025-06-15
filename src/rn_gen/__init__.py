@@ -87,7 +87,7 @@ def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -
             category=app_metadata.category,
             tags=app_metadata.tags,
             deployment_id=result["buildId"],
-            icon_url=None,
+            icon_url=app_metadata.app_icon,
             version="1.0.0",
             rating=round(random.uniform(4.1, 5), 1),
             downloads=1,

@@ -49,6 +49,7 @@ class AppMetadata(BaseModel):
     category: str = Field(
         description="A single value of the category of the app. Examples include Health, Design, Productivity, Utilities, etc."
     )
+    app_icon: str = Field(description="An emoji that best represents the app")
     tags: list[str] = Field(
         description="The set of three tags of the app. Examples include [Weather, Forecast, Location], [Todo, Tasks, Productivity], etc."
     )
