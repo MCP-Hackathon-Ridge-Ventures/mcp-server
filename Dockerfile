@@ -19,6 +19,10 @@ RUN apk add --no-cache \
     curl \
     bash
 
+# Install Rust via rustup for latest version
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 # Create symlink for python command
 RUN ln -sf python3 /usr/bin/python
 
@@ -26,7 +30,8 @@ RUN ln -sf python3 /usr/bin/python
 WORKDIR /app
 
 # Copy all files to app directory first
-COPY . /app/
+COPY . /app
+COPY ./template-app/ /app/template-app
 
 # Install Node.js dependencies
 WORKDIR /app/template-app
@@ -45,5 +50,5 @@ EXPOSE 3000 8000
 WORKDIR /app
 
 # Default command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "--app-dir", "/app/src/js_bundle_upload", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 

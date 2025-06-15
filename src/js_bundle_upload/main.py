@@ -1,12 +1,14 @@
 import os
 import json
 import asyncio
+import shutil
+import tempfile
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 import httpx
 import aiofiles
@@ -24,6 +26,7 @@ class BuildUploadService:
         self.mime_types = {
             ".html": "text/html",
             ".js": "application/javascript",
+            ".jsx": "application/javascript",
             ".css": "text/css",
             ".json": "application/json",
             ".png": "image/png",
@@ -35,6 +38,88 @@ class BuildUploadService:
             ".ttf": "font/ttf",
             ".map": "application/json",
         }
+
+    async def copy_template_with_custom_index(
+        self, template_app_dir: Path, index_jsx_content: str
+    ) -> Path:
+        """Copy template-app to a temporary directory and replace index.jsx"""
+        # Create a temporary directory
+        temp_dir = Path(tempfile.mkdtemp(prefix="expo_build_"))
+        temp_app_dir = temp_dir / "app"
+
+        print(f"📋 Creating temporary build directory: {temp_app_dir}")
+
+        try:
+            # Copy the entire template-app directory
+            if template_app_dir.exists():
+                shutil.copytree(template_app_dir, temp_app_dir)
+                print("📁 Template app copied successfully")
+            else:
+                # Create a basic template structure if template-app doesn't exist
+                print("⚠️ Template app not found, creating basic structure")
+                temp_app_dir.mkdir(parents=True, exist_ok=True)
+
+                # Create basic package.json
+                package_json = {
+                    "name": "expo-custom-app",
+                    "version": "1.0.0",
+                    "main": "index.js",
+                    "scripts": {"start": "expo start", "build": "expo export"},
+                    "dependencies": {
+                        "expo": "~50.0.0",
+                        "react": "18.2.0",
+                        "react-native": "0.73.0",
+                    },
+                }
+
+                async with aiofiles.open(temp_app_dir / "package.json", "w") as f:
+                    await f.write(json.dumps(package_json, indent=2))
+
+                # Create basic app.json
+                app_json = {
+                    "expo": {
+                        "name": "Custom Expo App",
+                        "slug": "custom-expo-app",
+                        "version": "1.0.0",
+                        "platforms": ["ios", "android", "web"],
+                    }
+                }
+
+                async with aiofiles.open(temp_app_dir / "app.json", "w") as f:
+                    await f.write(json.dumps(app_json, indent=2))
+
+                # Create basic index.js entry point
+                index_js_content = """import { registerRootComponent } from 'expo';
+import App from './App';
+
+registerRootComponent(App);
+"""
+                async with aiofiles.open(temp_app_dir / "index.js", "w") as f:
+                    await f.write(index_js_content)
+
+            # Write the custom index.jsx content as App.js (or App.jsx)
+            app_file_path = temp_app_dir / "App.js"
+            async with aiofiles.open(app_file_path, "w") as f:
+                await f.write(index_jsx_content)
+
+            print(f"✅ Custom App.js written to: {app_file_path}")
+
+            return temp_app_dir
+
+        except Exception as e:
+            # Clean up on error
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            raise e
+
+    async def cleanup_temp_directory(self, temp_dir: Path) -> None:
+        """Clean up temporary directory"""
+        try:
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                print(f"🧹 Cleaned up temporary directory: {temp_dir}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to clean up temporary directory: {e}")
 
     async def get_all_files(self, dir_path: Path) -> List[Path]:
         """Recursively get all files from directory"""
@@ -60,6 +145,26 @@ class BuildUploadService:
             )
 
         try:
+            # First run npm install to ensure dependencies are installed
+            print("   Running: npm install")
+            install_process = await asyncio.create_subprocess_exec(
+                "npm",
+                "install",
+                cwd=template_app_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            install_stdout, install_stderr = await install_process.communicate()
+
+            if install_process.returncode != 0:
+                error_msg = (
+                    install_stderr.decode() if install_stderr else "npm install failed"
+                )
+                print(f"   ⚠️ npm install warning: {error_msg}")
+            else:
+                print("   ✅ npm install completed")
+
             print("   Running: CI=1 npx expo export")
 
             # Set environment variables
@@ -158,20 +263,33 @@ class BuildUploadService:
 
         return response.json()
 
-    async def build_and_upload(self) -> Dict[str, Any]:
+    async def build_and_upload(
+        self, index_jsx_content: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Main function to build and upload Expo app"""
+        temp_app_dir = None
         try:
             print("🚀 Starting build and upload process...")
 
-            # Step 1: Navigate to template-app directory and run expo export
+            # Step 1: Set up the build directory
             current_dir = Path(__file__).parent
-            template_app_dir = current_dir / "template-app"
+            template_app_dir = current_dir.parent.parent / "template-app"
             template_app_dir = template_app_dir.resolve()
 
-            await self.run_expo_export(template_app_dir)
+            if index_jsx_content:
+                # Copy template-app + custom index.jsx to temporary directory
+                temp_app_dir = await self.copy_template_with_custom_index(
+                    template_app_dir, index_jsx_content
+                )
+                build_dir = temp_app_dir
+            else:
+                # Use original template-app directory
+                build_dir = template_app_dir
+
+            await self.run_expo_export(build_dir)
 
             # Step 2: Check if dist folder exists
-            dist_dir = template_app_dir / "dist"
+            dist_dir = build_dir / "dist"
             if not dist_dir.exists():
                 raise HTTPException(
                     status_code=404, detail="dist folder not found after expo export!"
@@ -264,6 +382,10 @@ class BuildUploadService:
         except Exception as error:
             print(f"❌ Error: {str(error)}")
             raise HTTPException(status_code=500, detail=str(error))
+        finally:
+            # Clean up temporary directory if it was created
+            if temp_app_dir:
+                await self.cleanup_temp_directory(temp_app_dir.parent)
 
 
 # Initialize service
@@ -271,18 +393,34 @@ build_service = BuildUploadService()
 
 
 @app.post("/build-and-upload")
-async def build_and_upload_endpoint():
+async def build_and_upload_endpoint(index_jsx: UploadFile = File(None)):
     """
     Build and upload Expo app endpoint
 
     This endpoint:
-    1. Runs expo export on the template-app directory
-    2. Uploads all generated files to Supabase
-    3. Creates and uploads a deployment manifest
-    4. Returns deployment information
+    1. Optionally accepts an index.jsx file to customize the app
+    2. Copies template-app + custom index.jsx to a temporary directory (if provided)
+    3. Runs expo export on the build directory
+    4. Uploads all generated files to Supabase
+    5. Creates and uploads a deployment manifest
+    6. Returns deployment information
     """
     try:
-        result = await build_service.build_and_upload()
+        index_jsx_content = None
+
+        if index_jsx:
+            # Validate file type
+            if not index_jsx.filename.endswith((".jsx", ".js")):
+                raise HTTPException(
+                    status_code=400, detail="File must be a .jsx or .js file"
+                )
+
+            # Read the uploaded file content
+            content = await index_jsx.read()
+            index_jsx_content = content.decode("utf-8")
+            print(f"📄 Received custom index.jsx file: {index_jsx.filename}")
+
+        result = await build_service.build_and_upload(index_jsx_content)
         return JSONResponse(
             status_code=200,
             content={
