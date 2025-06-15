@@ -4,10 +4,17 @@ import os
 from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
-from .prompt import PROMPT
-from .utils import AppSpec, OpenRouterClient
+
+from js_bundle_upload.main import build_app_local
+from .prompt import PROMPT, METADATA_PROMPT
+from .utils import AppSpec, OpenRouterClient, AppMetadata
+from src.supabase import supabase
+import tempfile
+import random
 
 load_dotenv()
+
+llm = OpenRouterClient(model_name="anthropic/claude-sonnet-4")
 
 
 def generate_app(user_request: str) -> AppSpec:
@@ -19,7 +26,6 @@ def generate_app(user_request: str) -> AppSpec:
     Returns:
         str: The generated JSX code for the app.
     """
-    llm = OpenRouterClient(model_name="anthropic/claude-sonnet-4")
     prompt = PromptTemplate.from_template(PROMPT)
     parser = PydanticOutputParser(pydantic_object=AppSpec)
 
@@ -35,7 +41,23 @@ def generate_app(user_request: str) -> AppSpec:
     return output
 
 
-def upload_to_supabase(app_spec: AppSpec) -> bool:
+def generate_metadata(user_request: str) -> dict:
+    prompt = PromptTemplate.from_template(METADATA_PROMPT)
+    parser = PydanticOutputParser(pydantic_object=AppMetadata)
+
+    chain = prompt | llm | parser
+
+    output: AppSpec = chain.invoke(
+        {
+            "user_request": user_request,
+            "format_instructions": parser.get_format_instructions(),
+        }
+    )
+
+    return output
+
+
+def build_and_upload_to_supabase(app_spec: AppSpec) -> bool:
     """Upload app specification to Supabase database.
 
     Args:
@@ -45,16 +67,27 @@ def upload_to_supabase(app_spec: AppSpec) -> bool:
         bool: True if upload was successful, False otherwise.
     """
     try:
-        # TODO: Implement step 1 - Get deployment ID from API
+        # Write a tempfile for App.jx from app_spec
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.write(app_spec.app_jsx.encode("utf-8"))
+
+        result = build_app_local(app_spec.app_jsx)
 
         data = {
             "name": app_spec.name,
             "description": app_spec.description,
-            "deployment_id": deployment_id,  # Will be set after step 1
-            "jsx_code": app_spec.app_jsx,
+            "category": app_spec.category,
+            "tags": app_spec.tags,
+            "deployment_id": result["deployment_id"],  # Will be set after step 1,
+            "icon_url": None,
+            "version": "1.0.0",
+            # Generate a random rating between 4.1 and 5
+            "rating": round(random.uniform(4.1, 5), 1),
+            "downloads": 1,
+            "is_featured": False,
         }
 
-        result = supabase.table("apps").insert(data).execute()
+        result = supabase.table("mini_apps").insert(data).execute()
 
         # Step 3: Return success status
         return result.data is not None
@@ -62,3 +95,5 @@ def upload_to_supabase(app_spec: AppSpec) -> bool:
     except Exception as e:
         print(f"Error uploading to Supabase: {str(e)}")
         return False
+    finally:
+        temp_file.close()

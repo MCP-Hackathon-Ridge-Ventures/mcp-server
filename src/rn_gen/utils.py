@@ -36,5 +36,16 @@ class AppSpec(BaseModel):
     """Data model for app specification containing JSX code."""
 
     app_jsx: str = Field(description="The JSX code for the app")
+
+
+class AppMetadata(BaseModel):
+    """Data model for app metadata."""
+
     name: str = Field(description="The name of the app")
     description: str = Field(description="The description of the app")
+    category: list[str] = Field(
+        description="The category of the app. Examples include Health, Design, Productivity, Utilities, etc."
+    )
+    tags: list[str] = Field(
+        description="The set of three tags of the app. Examples include [Weather, Forecast, Location], [Todo, Tasks, Productivity], etc."
+    )

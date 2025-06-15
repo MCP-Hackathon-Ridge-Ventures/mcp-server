@@ -1,28 +1,15 @@
 import os
 import json
-import asyncio
 import shutil
 import tempfile
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse
-import httpx
-import aiofiles
-from src.supabase import supabase
 
-app = FastAPI(title="Expo Bundle Upload Service", version="1.0.0")
-
-# Configuration
-SUPABASE_URL = "https://ggaiooipedyygqexifzb.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnYWlvb2lwZWR5eWdxZXhpZnpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MjMwMzMsImV4cCI6MjA2NTQ5OTAzM30.mFmR_NU1ir1d48fkPGvynQ5eNPb6rL88KnlOjH-g1Nw"
-UPLOAD_ENDPOINT = f"{SUPABASE_URL}/functions/v1/upload-zip-file"
-
-
-class BuildUploadService:
+class BuildService:
     def __init__(self):
         self.mime_types = {
             ".html": "text/html",
@@ -40,7 +27,7 @@ class BuildUploadService:
             ".map": "application/json",
         }
 
-    async def copy_template_with_custom_index(
+    def copy_template_with_custom_index(
         self, template_app_dir: Path, app_jsx_content: str
     ) -> Path:
         """Copy template-app to a temporary directory and replace index.jsx"""
@@ -57,8 +44,8 @@ class BuildUploadService:
 
             # Write the custom index.jsx content as App.jsx
             app_file_path = temp_app_dir / "App.jsx"
-            async with aiofiles.open(app_file_path, "w") as f:
-                await f.write(app_jsx_content)
+            with open(app_file_path, "w") as f:
+                f.write(app_jsx_content)
 
             print(f"✅ Custom App.jsx written to: {app_file_path}")
 
@@ -70,7 +57,7 @@ class BuildUploadService:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             raise e
 
-    async def cleanup_temp_directory(self, temp_dir: Path) -> None:
+    def cleanup_temp_directory(self, temp_dir: Path) -> None:
         """Clean up temporary directory"""
         try:
             if temp_dir.exists():
@@ -79,7 +66,7 @@ class BuildUploadService:
         except Exception as e:
             print(f"⚠️ Warning: Failed to clean up temporary directory: {e}")
 
-    async def get_all_files(self, dir_path: Path) -> List[Path]:
+    def get_all_files(self, dir_path: Path) -> List[Path]:
         """Recursively get all files from directory"""
         all_files = []
 
@@ -93,31 +80,25 @@ class BuildUploadService:
         _get_files_recursive(dir_path)
         return all_files
 
-    async def run_html_export(self, template_app_dir: Path) -> None:
-        """Run expo export command"""
+    def run_html_export(self, template_app_dir: Path) -> None:
+        """Run npm build command"""
         print("📦 Building HTML app...")
 
         if not template_app_dir.exists():
-            raise HTTPException(
-                status_code=404, detail="template-app directory not found!"
-            )
+            raise FileNotFoundError("template-app directory not found!")
 
         try:
             # First run npm install to ensure dependencies are installed
             print("   Running: npm install")
-            install_process = await asyncio.create_subprocess_exec(
-                "npm",
-                "install",
-                cwd=template_app_dir,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+            install_result = subprocess.run(
+                ["npm", "install"], cwd=template_app_dir, capture_output=True, text=True
             )
 
-            install_stdout, install_stderr = await install_process.communicate()
-
-            if install_process.returncode != 0:
+            if install_result.returncode != 0:
                 error_msg = (
-                    install_stderr.decode() if install_stderr else "npm install failed"
+                    install_result.stderr
+                    if install_result.stderr
+                    else "npm install failed"
                 )
                 print(f"   ⚠️ npm install warning: {error_msg}")
             else:
@@ -129,54 +110,33 @@ class BuildUploadService:
             env = os.environ.copy()
             env["CI"] = "1"
 
-            # Run the command
-            process = await asyncio.create_subprocess_exec(
-                "npm",
-                "run",
-                "build",
+            # Run the build command
+            build_result = subprocess.run(
+                ["npm", "run", "build"],
                 cwd=template_app_dir,
                 env=env,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                capture_output=True,
+                text=True,
             )
 
-            stdout, stderr = await process.communicate()
-
-            if process.returncode != 0:
-                error_msg = stderr.decode() if stderr else "HTML export failed"
-                raise HTTPException(
-                    status_code=500, detail=f"HTML export failed: {error_msg}"
+            if build_result.returncode != 0:
+                error_msg = (
+                    build_result.stderr if build_result.stderr else "Build failed"
                 )
+                raise RuntimeError(f"Build failed: {error_msg}")
 
-            print("✅ HTML export completed successfully")
+            print("✅ Build completed successfully")
 
         except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Failed to run html export: {str(e)}"
-            )
+            raise RuntimeError(f"Failed to run build: {str(e)}")
 
-    async def upload_single_file(
-        self, file_path: Path, relative_path: str, deployment_id: str
+    def build_app(
+        self, app_jsx_content: Optional[str] = None, output_dir: Optional[Path] = None
     ) -> Dict[str, Any]:
-        """Upload a single file to Supabase"""
-
-        with open(file_path, "rb") as f:
-            result = supabase.storage.from_("apps").upload(
-                file=f,
-                path=f"deployments/{deployment_id}/index.html",
-            )
-
-        print(f"📄 Result: {result}")
-
-        return result
-
-    async def build_and_upload(
-        self, app_jsx_content: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Main function to build and upload Expo app"""
+        """Main function to build the app locally"""
         temp_app_dir = None
         try:
-            print("🚀 Starting build and upload process...")
+            print("🚀 Starting build process...")
 
             # Step 1: Set up the build directory
             current_dir = Path(__file__).parent
@@ -185,7 +145,7 @@ class BuildUploadService:
 
             if app_jsx_content:
                 # Copy template-app + custom index.jsx to temporary directory
-                temp_app_dir = await self.copy_template_with_custom_index(
+                temp_app_dir = self.copy_template_with_custom_index(
                     template_app_dir, app_jsx_content
                 )
                 build_dir = temp_app_dir
@@ -193,126 +153,120 @@ class BuildUploadService:
                 # Use original template-app directory
                 build_dir = template_app_dir
 
-            await self.run_html_export(build_dir)
+            self.run_html_export(build_dir)
 
             # Step 2: Check if dist folder exists
             dist_dir = build_dir / "dist"
             if not dist_dir.exists():
-                raise HTTPException(
-                    status_code=404, detail="dist folder not found after expo export!"
-                )
+                raise FileNotFoundError("dist folder not found after build!")
 
             print("📁 Found dist folder, scanning files...")
 
             # Step 3: Get all files from dist directory recursively
-            all_files = await self.get_all_files(dist_dir)
-            print(f"📊 Found {len(all_files)} files to upload")
+            all_files = self.get_all_files(dist_dir)
+            print(f"📊 Found {len(all_files)} files in build output")
 
-            # Step 4: Upload each file individually with organized structure
-            print("☁️ Starting individual file uploads...")
-            upload_results = []
-            deployment_id = str(uuid.uuid4())  # Group all files under one deployment
+            # Step 4: Optionally copy files to output directory
+            if output_dir:
+                output_dir = Path(output_dir)
+                output_dir.mkdir(parents=True, exist_ok=True)
 
-            print(f"🆔 Deployment ID: {deployment_id}")
-            print(f"📂 Files will be organized in: deployments/{deployment_id}/")
+                print(f"📂 Copying build output to: {output_dir}")
 
-            for i, file_path in enumerate(all_files):
-                relative_path = str(file_path.relative_to(dist_dir))
+                # Copy entire dist directory to output directory
+                if output_dir.exists():
+                    shutil.rmtree(output_dir, ignore_errors=True)
+                shutil.copytree(dist_dir, output_dir)
 
-                print(f"📤 Uploading {i + 1}/{len(all_files)}: {relative_path}")
+                print(f"✅ Build output copied to: {output_dir}")
 
-                try:
-                    await self.upload_single_file(
-                        file_path, relative_path, deployment_id
-                    )
+            build_id = str(uuid.uuid4())
 
-                    return {
-                        "success": True,
-                        "message": "Build and upload completed successfully",
-                        "deploymentId": deployment_id,
-                    }
+            return {
+                "success": True,
+                "message": "Build completed successfully",
+                "buildId": build_id,
+                "distDir": str(dist_dir),
+                "outputDir": str(output_dir) if output_dir else None,
+                "fileCount": len(all_files),
+                "files": [str(f.relative_to(dist_dir)) for f in all_files],
+            }
 
-                except Exception as error:
-                    print(f"   ❌ Failed: {relative_path} - {str(error)}")
-
-        except HTTPException:
-            raise
         except Exception as error:
             print(f"❌ Error: {str(error)}")
-            raise HTTPException(status_code=500, detail=str(error))
+            raise RuntimeError(str(error))
         finally:
             # Clean up temporary directory if it was created
             if temp_app_dir:
-                await self.cleanup_temp_directory(temp_app_dir.parent)
-
-        return {}
+                self.cleanup_temp_directory(temp_app_dir.parent)
 
 
-# Initialize service
-build_service = BuildUploadService()
-
-
-@app.post("/build-and-upload")
-async def build_and_upload_endpoint(app_jsx: UploadFile = File(None)):
+def build_app_local(
+    app_jsx_content: Optional[str] = None, output_dir: Optional[str] = None
+) -> Dict[str, Any]:
     """
-    Build and upload Expo app endpoint
+    Build app locally without any API calls
 
-    This endpoint:
-    1. Optionally accepts an index.jsx file to customize the app
-    2. Copies template-app + custom index.jsx to a temporary directory (if provided)
-    3. Runs expo export on the build directory
-    4. Uploads all generated files to Supabase
-    5. Creates and uploads a deployment manifest
-    6. Returns deployment information
+    Args:
+        app_jsx_content: Optional custom JSX content for App.jsx
+        output_dir: Optional directory to copy the build output to
+
+    Returns:
+        Dictionary with build results and information
     """
-    try:
-        app_jsx_content = None
-
-        if app_jsx:
-            # Validate file type
-            if not app_jsx.filename.endswith((".jsx", ".js")):
-                raise HTTPException(
-                    status_code=400, detail="File must be a .jsx or .js file"
-                )
-
-            # Read the uploaded file content
-            content = await app_jsx.read()
-            app_jsx_content = content.decode("utf-8")
-            print(f"📄 Received custom index.jsx file: {app_jsx.filename}")
-
-        result = await build_service.build_and_upload(app_jsx_content)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "success": True,
-                "message": "Build and upload completed successfully",
-                "deploymentId": result["deploymentId"],
-                "data": result,
-            },
-        )
-    except HTTPException as e:
-        return JSONResponse(
-            status_code=e.status_code, content={"success": False, "error": e.detail}
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=500, content={"success": False, "error": str(e)}
-        )
+    build_service = BuildService()
+    output_path = Path(output_dir) if output_dir else None
+    return build_service.build_app(app_jsx_content, output_path)
 
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {"message": "Expo Bundle Upload Service is running"}
+def build_app_from_file(
+    jsx_file_path: str, output_dir: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Build app from a JSX file
 
+    Args:
+        jsx_file_path: Path to the JSX file to use as App.jsx
+        output_dir: Optional directory to copy the build output to
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy"}
+    Returns:
+        Dictionary with build results and information
+    """
+    jsx_path = Path(jsx_file_path)
+    if not jsx_path.exists():
+        raise FileNotFoundError(f"JSX file not found: {jsx_file_path}")
+
+    if not jsx_path.suffix.lower() in [".jsx", ".js"]:
+        raise ValueError("File must be a .jsx or .js file")
+
+    with open(jsx_path, "r", encoding="utf-8") as f:
+        jsx_content = f.read()
+
+    return build_app_local(jsx_content, output_dir)
 
 
 if __name__ == "__main__":
-    import uvicorn
+    # Example usage
+    try:
+        # Build with default template
+        result = build_app_local(output_dir="./build_output")
+        print(f"Build successful: {result}")
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        # Or build with custom JSX content
+        # custom_jsx = """
+        # import React from 'react';
+        #
+        # export default function App() {
+        #   return (
+        #     <div>
+        #       <h1>Hello World!</h1>
+        #       <p>This is a custom app.</p>
+        #     </div>
+        #   );
+        # }
+        # """
+        # result = build_app_local(custom_jsx, "./custom_build")
+        # print(f"Custom build successful: {result}")
+
+    except Exception as e:
+        print(f"Build failed: {e}")
