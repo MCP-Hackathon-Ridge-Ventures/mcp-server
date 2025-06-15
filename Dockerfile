@@ -50,5 +50,5 @@ EXPOSE 3000 8000
 WORKDIR /app
 
 # Default command
-CMD ["uvicorn", "--app-dir", "/app/src/js_bundle_upload", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "--app-dir", "/app/src", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 
