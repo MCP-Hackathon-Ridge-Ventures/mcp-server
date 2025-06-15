@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "microapp-mcp": {
+            "command": "uv run python",
+            "args": [
+                "app.py"
+            ]
+        }
+    }
+}
