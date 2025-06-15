@@ -39,7 +39,7 @@ RUN npm install
 WORKDIR /app
 
 # Install Python dependencies using pyproject.toml
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e . --no-dependencies
 
 # Expose ports
 # Port 8000 for FastAPI
