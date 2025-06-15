@@ -11,4 +11,4 @@ services:
       - .:/app
     env_file:
       - .env
-    command: uvicorn src.js_bundle_upload.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
