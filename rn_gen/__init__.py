@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 from .prompt import PROMPT
-from .llm_client import AppSpec, OpenRouterClient
+from .utils import AppSpec, OpenRouterClient
 
 load_dotenv()
 
