@@ -14,3 +14,13 @@
 2025-06-15 13:38:48,545 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
 2025-06-15 13:38:56,580 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
 2025-06-15 13:40:26,053 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:06:36,835 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:06:37,616 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:07:07,607 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:07:52,648 - log - ERROR - Error uploading to Supabase: Instance <MiniApp at 0x107d17e90> is not bound to a Session; attribute refresh operation cannot proceed (Background on this error at: https://sqlalche.me/e/20/bhk3)
+2025-06-15 14:08:24,036 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:09:47,246 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:10:56,564 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:12:07,082 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:13:42,934 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
+2025-06-15 14:18:28,154 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
