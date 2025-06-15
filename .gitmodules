@@ -1,0 +1,3 @@
+[submodule "template-app"]
+	path = template-app
+	url = https://github.com/MCP-Hackathon-Ridge-Ventures/template-app.git
