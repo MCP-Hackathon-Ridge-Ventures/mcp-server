@@ -1,21 +1,29 @@
-"""EnrichMCP API Gateway example.
-
-This example shows how EnrichMCP can sit in front of an existing FastAPI service
-and expose an agent-friendly API. All resolvers make HTTP requests to the
-backend, acting as a lightweight API gateway.
-"""
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
+from fastapi import FastAPI
 import httpx
 from pydantic import Field
 
 from enrichmcp import EnrichContext, EnrichMCP, EnrichModel, Relationship
 
+from src.rn_gen import build_and_upload_to_supabase, generate_app, generate_metadata
+
 BACKEND_URL = "http://localhost:8001"
+app = FastAPI(title="MicroApp")
+
+
+@app.post("/create-app")
+async def create_app_request(user_request: str):
+    try:
+        app_spec = generate_app(user_request)
+        app_metadata = generate_metadata(user_request)
+        success = build_and_upload_to_supabase(app_spec, app_metadata)
+        return {"success": success}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @asynccontextmanager
@@ -25,8 +33,8 @@ async def lifespan(app: EnrichMCP) -> AsyncIterator[dict[str, Any]]:
 
 
 app = EnrichMCP(
-    title="Shop API Gateway",
-    description="EnrichMCP front-end for a FastAPI backend",
+    title="MicroApp",
+    description="MicroApp is a platform for creating and sharing micro-apps.",
     lifespan=lifespan,
 )
 
@@ -159,5 +167,5 @@ async def get_order_products(order_id: int, ctx: EnrichContext) -> list[Product]
 
 
 if __name__ == "__main__":
-    print("Starting Shop API Gateway...")
+    print("Starting MicroApp...")
     app.run()
