@@ -6,18 +6,19 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
+from enrichmcp import sqlalchemy_lifespan
+from enrichmcp import EnrichMCP
 import httpx
 from fastapi import FastAPI
 from fastmcp import FastMCP
 from log import logger
 from pydantic import Field
+from src.models import Base
+from src.supabase import engine
 from src.rn_gen import build_and_upload_to_supabase, generate_app, generate_metadata
 
 BACKEND_URL = "http://localhost:8001"
 app = FastAPI(title="MicroApp")
-
-# Print all os env
-print(os.environ)
 
 
 async def generate_app_wrapper(user_request: str) -> dict:
@@ -35,11 +36,14 @@ async def create_app_request(user_request: str):
     return await generate_app_wrapper(user_request)
 
 
-# FastMCP app
-mcp = FastMCP(name="MicroApp")
+# EnrichMCP app
+mcp = EnrichMCP(
+    "MicroApp",
+    description="Mobile app generation service",
+)
 
 
-@mcp.tool()
+@mcp.resource()
 async def generate_mobile_app(user_request: str) -> dict[str, str]:
     """This is a tool to generate a mobile app based on any user request. If a user asks for a mobile app, this tool will be used to generate the app.
     The mobile app will be generated using the user request and the app will be sent to the user's phone.

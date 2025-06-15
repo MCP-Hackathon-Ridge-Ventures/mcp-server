@@ -1,22 +1,24 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, Integer, String, Float, Boolean
+from enrichmcp.sqlalchemy import EnrichSQLAlchemyMixin
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String, Integer, Float, Boolean
 
 
-class Base(DeclarativeBase):
+class Base(DeclarativeBase, EnrichSQLAlchemyMixin):
     pass
 
 
 class MiniApp(Base):
     __tablename__ = "mini_apps"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String)
-    description = Column(String)
-    category = Column(String)
-    tags = Column(String)
-    deployment_id = Column(String)
-    icon_url = Column(String, nullable=True)
-    version = Column(String)
-    rating = Column(Float)
-    downloads = Column(Integer)
-    is_featured = Column(Boolean)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(String)
+    category: Mapped[str] = mapped_column(String)
+    tags: Mapped[str] = mapped_column(String)
+    deployment_id: Mapped[str] = mapped_column(String)
+    icon_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    version: Mapped[str] = mapped_column(String)
+    rating: Mapped[float] = mapped_column(Float)
+    downloads: Mapped[int] = mapped_column(Integer)
+    is_featured: Mapped[bool] = mapped_column(Boolean)

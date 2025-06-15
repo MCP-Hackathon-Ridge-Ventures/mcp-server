@@ -6,8 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aiofiles>=24.1.0",
-    "fastmcp>=2.2.0",
-    "fastapi>=0.115.12",
+    "enrichmcp[sqlalchemy]>=0.4.1",
     "httpx>=0.28.1",
     "langchain>=0.3.25",
     "langchain-core>=0.3.65",
@@ -17,7 +16,6 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "python-multipart>=0.0.20",
     "supabase>=2.15.3",
-    "uvicorn[standard]>=0.34.3",
 ]
 
 [dependency-groups]
