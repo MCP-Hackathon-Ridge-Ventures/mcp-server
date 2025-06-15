@@ -1,12 +1,13 @@
-import os
 import json
+import os
 import shutil
-import tempfile
 import subprocess
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+import tempfile
 import uuid
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from src.supabase import supabase
 
 
@@ -15,6 +16,7 @@ class BuildService:
         self.mime_types = {
             ".html": "text/html",
             ".js": "application/javascript",
+            ".ts": "application/javascript",
             ".jsx": "application/javascript",
             ".css": "text/css",
             ".json": "application/json",
@@ -157,15 +159,15 @@ class BuildService:
             self.run_html_export(build_dir)
 
             # Step 2: Check if dist folder exists
-            dist_dir = build_dir / "dist"
+            dist_dir = build_dir / "web"
             if not dist_dir.exists():
-                raise FileNotFoundError("dist folder not found after build!")
+                raise FileNotFoundError("web folder not found after build!")
 
-            print("📁 Found dist folder, scanning files...")
+            print("📁 Found web folder, scanning files...")
 
             # Step 3: Get all files from dist directory recursively
             all_files = self.get_all_files(dist_dir)
-            print(f"📊 Found {len(all_files)} files in build output")
+            print(f"📊 Found {len(all_files)} files in web output")
 
             # Step 4: Optionally copy files to output directory
             if output_dir:

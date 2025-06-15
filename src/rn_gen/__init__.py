@@ -1,16 +1,20 @@
 """React Native app generation module using LLM."""
 
 import os
-from dotenv import load_dotenv
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain.prompts import PromptTemplate
-
-from src.models import MiniApp
-from src.js_bundle_upload.main import build_app_local
-from src.rn_gen.prompt import PROMPT, METADATA_PROMPT
-from src.rn_gen.utils import AppSpec, OpenRouterClient, AppMetadata, insert_into_db
-import tempfile
 import random
+import tempfile
+
+from dotenv import load_dotenv
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
+from src.js_bundle_upload.main import build_app_local
+from src.models import MiniApp
+from src.rn_gen.prompt import METADATA_PROMPT, PROMPT
+from src.rn_gen.utils import AppMetadata, AppSpec, OpenRouterClient, insert_into_db
+from src.supabase import supabase
+
+from .prompt import METADATA_PROMPT, PROMPT
+from .utils import AppMetadata, AppSpec, OpenRouterClient
 
 load_dotenv()
 
@@ -26,6 +30,9 @@ def generate_app(user_request: str) -> AppSpec:
     Returns:
         str: The generated JSX code for the app.
     """
+    with open("src/rn_gen/prompt.txt", "r") as file:
+        prompt = file.read()
+
     prompt = PromptTemplate.from_template(PROMPT)
     parser = PydanticOutputParser(pydantic_object=AppSpec)
 
@@ -33,6 +40,7 @@ def generate_app(user_request: str) -> AppSpec:
 
     output: AppSpec = chain.invoke(
         {
+            "prompt": prompt,
             "user_request": user_request,
             "format_instructions": parser.get_format_instructions(),
         }

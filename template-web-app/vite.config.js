@@ -5,5 +5,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), viteSingleFile(), tailwindcss()],
+  plugins: [
+    react(),
+    viteSingleFile({
+      deleteInlinedFiles: true,
+      removeViteModuleLoader: true,
+    }),
+    tailwindcss(),
+  ],
 });
