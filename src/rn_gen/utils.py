@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 from langchain_core.utils.utils import secret_from_env
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, SecretStr
+from sqlalchemy.exc import SQLAlchemyError
+from src.models import MiniApp
+from src.supabase import session
 
 load_dotenv()
 
@@ -49,3 +52,20 @@ class AppMetadata(BaseModel):
     tags: list[str] = Field(
         description="The set of three tags of the app. Examples include [Weather, Forecast, Location], [Todo, Tasks, Productivity], etc."
     )
+
+
+def insert_into_db(mini_app: MiniApp) -> bool:
+    """Insert a MiniApp object into the database."""
+    success = False
+
+    try:
+        session.add(mini_app)
+        session.commit()
+        success = True
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Insertion failed: {str(e)}")
+    finally:
+        session.close()
+
+    return success

@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 
+from src.models import MiniApp
 from src.js_bundle_upload.main import build_app_local
-from .prompt import PROMPT, METADATA_PROMPT
-from .utils import AppSpec, OpenRouterClient, AppMetadata
-from src.supabase import supabase
+from src.rn_gen.prompt import PROMPT, METADATA_PROMPT
+from src.rn_gen.utils import AppSpec, OpenRouterClient, AppMetadata, insert_into_db
 import tempfile
 import random
 
@@ -74,24 +74,25 @@ def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -
         result = build_app_local(app_spec.app_jsx)
         print(result)
 
-        data = {
-            "name": app_metadata.name,
-            "description": app_metadata.description,
-            "category": app_metadata.category,
-            "tags": app_metadata.tags,
-            "deployment_id": result["buildId"],  # Will be set after step 1,
-            "icon_url": None,
-            "version": "1.0.0",
-            # Generate a random rating between 4.1 and 5
-            "rating": round(random.uniform(4.1, 5), 1),
-            "downloads": 1,
-            "is_featured": False,
-        }
+        # Create a MiniApp object
+        mini_app = MiniApp(
+            name=app_metadata.name,
+            description=app_metadata.description,
+            category=app_metadata.category,
+            tags=app_metadata.tags,
+            deployment_id=result["buildId"],
+            icon_url=None,
+            version="1.0.0",
+            rating=round(random.uniform(4.1, 5), 1),
+            downloads=1,
+            is_featured=False,
+        )
 
-        result = supabase.table("mini_apps").insert(data).execute()
+        # Insert into DB
+        success = insert_into_db(mini_app)
 
         # Step 3: Return success status
-        return result.data is not None
+        return success
 
     except Exception as e:
         print(f"Error uploading to Supabase: {str(e)}")
