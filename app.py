@@ -2,6 +2,7 @@ import asyncio
 import traceback
 
 from enrichmcp import EnrichMCP
+from fastmcp import FastMCP
 from fastapi import FastAPI
 from log import logger
 from src.rn_gen import (
@@ -88,7 +89,7 @@ async def generate_mobile_app(user_request: str) -> dict[str, str]:
         }
 
 
-# @mcp.resource()
+@mcp.resource()
 async def edit_mobile_app(user_request: str, deployment_id: str) -> dict[str, str]:
     """This is a tool to edit a mobile app based on any user request. If a user asks for a mobile app, this tool will be used to edit the app.
     The mobile app will be edited using the user request and the app will be sent to the user's phone.
@@ -112,4 +113,4 @@ async def edit_mobile_app(user_request: str, deployment_id: str) -> dict[str, st
 
 if __name__ == "__main__":
     logger.info("Starting MicroApp...")
-    asyncio.run(mcp.run(transport="stdio"))
+    mcp.run()
