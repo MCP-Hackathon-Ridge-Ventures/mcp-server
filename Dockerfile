@@ -1,55 +1,53 @@
-# Use Python slim image as base
-FROM python:3.12-slim
+# Use Alpine Linux as the base image
+FROM alpine:3.18
 
 # Set environment variables
-ENV NODE_VERSION=20
+ENV NODE_VERSION=22
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Install Node.js and build essentials
-RUN apt-get update && apt-get install -y \
+# Install system dependencies
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    python3 \
+    python3-dev \
+    py3-pip \
+    gcc \
+    musl-dev \
+    linux-headers \
     curl \
-    gnupg \
-    build-essential \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    bash
 
-# Verify Node.js and npm installation
-RUN node --version && npm --version
+# Install Rust via rustup for latest version
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Create symlink for python command
+RUN ln -sf python3 /usr/bin/python
 
 # Create app directory
 WORKDIR /app
 
-# Copy Python project files first
-COPY pyproject.toml uv.lock ./
-COPY src/ ./src/
+# Copy all files to app directory first
+COPY . /app
+COPY ./template-web-app/ /app/template-web-app
+
+# Install Node.js dependencies
+WORKDIR /app/template-web-app
+RUN npm install
+WORKDIR /app
 
 # Install Python dependencies using pyproject.toml
 RUN pip install --no-cache-dir -e .
-
-# Copy Node.js project files
-COPY template-web-app/package*.json ./template-web-app/
-
-# Install Node.js dependencies first (better caching)
-WORKDIR /app/template-web-app
-RUN npm ci
-
-# Copy the rest of the Node.js application files
-COPY template-web-app/ ./
-
-# Switch back to main app directory
-WORKDIR /app
-
-# Copy any remaining files (node_modules excluded via .dockerignore)
-COPY . .
 
 # Expose ports
 # Port 8000 for FastAPI
 # Port 3000 for Node.js (common default)
 EXPOSE 3000 8000
 
+# Set working directory
+WORKDIR /app
+
 # Default command
 CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
-
