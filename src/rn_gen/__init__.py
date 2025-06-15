@@ -91,7 +91,7 @@ def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -
             version="1.0.0",
             rating=round(random.uniform(4.1, 5), 1),
             downloads=1,
-            is_featured=False,
+            is_featured=random.random() < 0.3,
         )
 
         # Insert into DB
