@@ -36,3 +36,5 @@ class AppSpec(BaseModel):
     """Data model for app specification containing JSX code."""
 
     app_jsx: str = Field(description="The JSX code for the app")
+    name: str = Field(description="The name of the app")
+    description: str = Field(description="The description of the app")

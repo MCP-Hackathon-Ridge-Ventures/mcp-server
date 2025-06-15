@@ -9,7 +9,7 @@ from .utils import AppSpec, OpenRouterClient
 load_dotenv()
 
 
-def generate_app(user_request: str) -> str:
+def generate_app(user_request: str) -> AppSpec:
     """Generate React Native app JSX code based on user request.
 
     Args:
@@ -31,4 +31,4 @@ def generate_app(user_request: str) -> str:
         }
     )
 
-    return output.app_jsx
+    return output
