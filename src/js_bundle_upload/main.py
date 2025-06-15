@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 import httpx
 import aiofiles
+from src.supabase import supabase
 
 app = FastAPI(title="Expo Bundle Upload Service", version="1.0.0")
 
@@ -159,36 +160,15 @@ class BuildUploadService:
     ) -> Dict[str, Any]:
         """Upload a single file to Supabase"""
 
-        async with aiofiles.open(file_path, "rb") as f:
-            file_content = await f.read()
-
-        file_name = file_path.name
-        file_ext = file_path.suffix
-        content_type = self.mime_types.get(file_ext, "application/octet-stream")
-
-        # Prepare form data
-        files = {"file": (file_name, file_content, content_type)}
-
-        data = {
-            "name": "Expo App File",
-            "platform": "ios",
-            "deploymentId": deployment_id,
-            "relativePath": relative_path,
-        }
-
-        headers = {"Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                UPLOAD_ENDPOINT, files=files, data=data, headers=headers, timeout=30.0
+        with open(file_path, "rb") as f:
+            result = supabase.storage.from_("apps").upload(
+                file=f,
+                path=f"deployments/{deployment_id}/index.html",
             )
 
-        if response.status_code != 200:
-            error_data = response.json() if response.content else {}
-            error_msg = error_data.get("error", "Upload failed")
-            raise HTTPException(status_code=response.status_code, detail=error_msg)
+        print(f"📄 Result: {result}")
 
-        return response.json()
+        return result
 
     async def build_and_upload(
         self, app_jsx_content: Optional[str] = None
@@ -242,51 +222,18 @@ class BuildUploadService:
                 print(f"📤 Uploading {i + 1}/{len(all_files)}: {relative_path}")
 
                 try:
-                    result = await self.upload_single_file(
+                    await self.upload_single_file(
                         file_path, relative_path, deployment_id
                     )
 
-                    upload_results.append(
-                        {
-                            "originalPath": relative_path,
-                            "fileId": result.get("fileId"),
-                            "fileName": result.get("fileName"),
-                            "publicUrl": result.get("publicUrl"),
-                            "uploadPath": result.get("uploadPath"),
-                            "fileSize": result.get("fileSize"),
-                            "fileType": result.get("fileType"),
-                        }
-                    )
-
-                    print(f"   ✅ Success: {result.get('uploadPath')}")
+                    return {
+                        "success": True,
+                        "message": "Build and upload completed successfully",
+                        "deploymentId": deployment_id,
+                    }
 
                 except Exception as error:
                     print(f"   ❌ Failed: {relative_path} - {str(error)}")
-
-            # Step 5: Create and upload manifest file
-            print("📋 Creating deployment manifest...")
-
-            # Find entry point (index.html or first file)
-            entry_point = None
-            for file_result in upload_results:
-                if "index.html" in file_result["originalPath"]:
-                    entry_point = file_result
-                    break
-
-            if not entry_point and upload_results:
-                entry_point = upload_results[0]
-
-            print("🎉 Upload completed successfully!")
-            print(f"📄 Deployment ID: {deployment_id}")
-            print(f"📂 Deployment Folder: deployments/{deployment_id}/")
-            print(f"📊 Total files uploaded: {len(upload_results)}")
-
-            # Return the manifest for database storage
-            return {
-                "deploymentId": deployment_id,
-                "totalFiles": len(upload_results),
-                "files": upload_results,
-            }
 
         except HTTPException:
             raise
@@ -297,6 +244,8 @@ class BuildUploadService:
             # Clean up temporary directory if it was created
             if temp_app_dir:
                 await self.cleanup_temp_directory(temp_app_dir.parent)
+
+        return {}
 
 
 # Initialize service
