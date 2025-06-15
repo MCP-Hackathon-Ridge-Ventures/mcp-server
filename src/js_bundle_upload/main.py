@@ -159,15 +159,15 @@ class BuildService:
             self.run_html_export(build_dir)
 
             # Step 2: Check if dist folder exists
-            dist_dir = build_dir / "web"
+            dist_dir = build_dir / "dist"
             if not dist_dir.exists():
-                raise FileNotFoundError("web folder not found after build!")
+                raise FileNotFoundError("dist folder not found after build!")
 
-            print("📁 Found web folder, scanning files...")
+            print("📁 Found dist folder, scanning files...")
 
             # Step 3: Get all files from dist directory recursively
             all_files = self.get_all_files(dist_dir)
-            print(f"📊 Found {len(all_files)} files in web output")
+            print(f"📊 Found {len(all_files)} files in dist output")
 
             # Step 4: Optionally copy files to output directory
             if output_dir:
