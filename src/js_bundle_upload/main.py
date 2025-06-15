@@ -40,7 +40,7 @@ class BuildUploadService:
         }
 
     async def copy_template_with_custom_index(
-        self, template_app_dir: Path, index_jsx_content: str
+        self, template_app_dir: Path, app_jsx_content: str
     ) -> Path:
         """Copy template-app to a temporary directory and replace index.jsx"""
         # Create a temporary directory
@@ -51,58 +51,15 @@ class BuildUploadService:
 
         try:
             # Copy the entire template-app directory
-            if template_app_dir.exists():
-                shutil.copytree(template_app_dir, temp_app_dir)
-                print("📁 Template app copied successfully")
-            else:
-                # Create a basic template structure if template-app doesn't exist
-                print("⚠️ Template app not found, creating basic structure")
-                temp_app_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(template_app_dir, temp_app_dir)
+            print("📁 Template app copied successfully")
 
-                # Create basic package.json
-                package_json = {
-                    "name": "expo-custom-app",
-                    "version": "1.0.0",
-                    "main": "index.js",
-                    "scripts": {"start": "expo start", "build": "expo export"},
-                    "dependencies": {
-                        "expo": "~50.0.0",
-                        "react": "18.2.0",
-                        "react-native": "0.73.0",
-                    },
-                }
-
-                async with aiofiles.open(temp_app_dir / "package.json", "w") as f:
-                    await f.write(json.dumps(package_json, indent=2))
-
-                # Create basic app.json
-                app_json = {
-                    "expo": {
-                        "name": "Custom Expo App",
-                        "slug": "custom-expo-app",
-                        "version": "1.0.0",
-                        "platforms": ["ios", "android", "web"],
-                    }
-                }
-
-                async with aiofiles.open(temp_app_dir / "app.json", "w") as f:
-                    await f.write(json.dumps(app_json, indent=2))
-
-                # Create basic index.js entry point
-                index_js_content = """import { registerRootComponent } from 'expo';
-import App from './App';
-
-registerRootComponent(App);
-"""
-                async with aiofiles.open(temp_app_dir / "index.js", "w") as f:
-                    await f.write(index_js_content)
-
-            # Write the custom index.jsx content as App.js (or App.jsx)
-            app_file_path = temp_app_dir / "App.js"
+            # Write the custom index.jsx content as App.jsx
+            app_file_path = temp_app_dir / "App.jsx"
             async with aiofiles.open(app_file_path, "w") as f:
-                await f.write(index_jsx_content)
+                await f.write(app_jsx_content)
 
-            print(f"✅ Custom App.js written to: {app_file_path}")
+            print(f"✅ Custom App.jsx written to: {app_file_path}")
 
             return temp_app_dir
 
@@ -135,9 +92,9 @@ registerRootComponent(App);
         _get_files_recursive(dir_path)
         return all_files
 
-    async def run_expo_export(self, template_app_dir: Path) -> None:
+    async def run_html_export(self, template_app_dir: Path) -> None:
         """Run expo export command"""
-        print("📦 Building Expo app...")
+        print("📦 Building HTML app...")
 
         if not template_app_dir.exists():
             raise HTTPException(
@@ -165,7 +122,7 @@ registerRootComponent(App);
             else:
                 print("   ✅ npm install completed")
 
-            print("   Running: CI=1 npx expo export")
+            print("   Running: npm run build")
 
             # Set environment variables
             env = os.environ.copy()
@@ -173,9 +130,9 @@ registerRootComponent(App);
 
             # Run the command
             process = await asyncio.create_subprocess_exec(
-                "npx",
-                "expo",
-                "export",
+                "npm",
+                "run",
+                "build",
                 cwd=template_app_dir,
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
@@ -185,16 +142,16 @@ registerRootComponent(App);
             stdout, stderr = await process.communicate()
 
             if process.returncode != 0:
-                error_msg = stderr.decode() if stderr else "Expo export failed"
+                error_msg = stderr.decode() if stderr else "HTML export failed"
                 raise HTTPException(
-                    status_code=500, detail=f"Expo export failed: {error_msg}"
+                    status_code=500, detail=f"HTML export failed: {error_msg}"
                 )
 
-            print("✅ Expo export completed successfully")
+            print("✅ HTML export completed successfully")
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"Failed to run expo export: {str(e)}"
+                status_code=500, detail=f"Failed to run html export: {str(e)}"
             )
 
     async def upload_single_file(
@@ -233,38 +190,8 @@ registerRootComponent(App);
 
         return response.json()
 
-    async def upload_manifest(
-        self, manifest: Dict[str, Any], deployment_id: str
-    ) -> Dict[str, Any]:
-        """Upload deployment manifest"""
-
-        manifest_content = json.dumps(manifest, indent=2).encode("utf-8")
-
-        files = {"file": ("manifest.json", manifest_content, "application/json")}
-
-        data = {
-            "name": "Deployment Manifest",
-            "platform": "ios",
-            "deploymentId": deployment_id,
-            "isManifest": "true",
-        }
-
-        headers = {"Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                UPLOAD_ENDPOINT, files=files, data=data, headers=headers, timeout=30.0
-            )
-
-        if response.status_code != 200:
-            error_data = response.json() if response.content else {}
-            error_msg = error_data.get("error", "Manifest upload failed")
-            raise HTTPException(status_code=response.status_code, detail=error_msg)
-
-        return response.json()
-
     async def build_and_upload(
-        self, index_jsx_content: Optional[str] = None
+        self, app_jsx_content: Optional[str] = None
     ) -> Dict[str, Any]:
         """Main function to build and upload Expo app"""
         temp_app_dir = None
@@ -273,20 +200,20 @@ registerRootComponent(App);
 
             # Step 1: Set up the build directory
             current_dir = Path(__file__).parent
-            template_app_dir = current_dir.parent.parent / "template-app"
+            template_app_dir = current_dir.parent.parent / "template-web-app"
             template_app_dir = template_app_dir.resolve()
 
-            if index_jsx_content:
+            if app_jsx_content:
                 # Copy template-app + custom index.jsx to temporary directory
                 temp_app_dir = await self.copy_template_with_custom_index(
-                    template_app_dir, index_jsx_content
+                    template_app_dir, app_jsx_content
                 )
                 build_dir = temp_app_dir
             else:
                 # Use original template-app directory
                 build_dir = template_app_dir
 
-            await self.run_expo_export(build_dir)
+            await self.run_html_export(build_dir)
 
             # Step 2: Check if dist folder exists
             dist_dir = build_dir / "dist"
@@ -349,30 +276,14 @@ registerRootComponent(App);
             if not entry_point and upload_results:
                 entry_point = upload_results[0]
 
-            manifest = {
-                "deploymentId": deployment_id,
-                "platform": "ios",
-                "timestamp": datetime.utcnow().isoformat(),
-                "totalFiles": len(upload_results),
-                "files": upload_results,
-                "entryPoint": entry_point,
-                "baseUrl": f"{SUPABASE_URL}/storage/v1/object/public/apps/deployments/{deployment_id}/",
-            }
-
-            manifest_result = await self.upload_manifest(manifest, deployment_id)
-
             print("🎉 Upload completed successfully!")
             print(f"📄 Deployment ID: {deployment_id}")
             print(f"📂 Deployment Folder: deployments/{deployment_id}/")
-            print(f"📋 Manifest URL: {manifest_result.get('publicUrl')}")
             print(f"📊 Total files uploaded: {len(upload_results)}")
-            print(f"🌐 Base URL: {manifest['baseUrl']}")
 
             # Return the manifest for database storage
             return {
                 "deploymentId": deployment_id,
-                "manifestUrl": manifest_result.get("publicUrl"),
-                "baseUrl": manifest["baseUrl"],
                 "totalFiles": len(upload_results),
                 "files": upload_results,
             }
@@ -393,7 +304,7 @@ build_service = BuildUploadService()
 
 
 @app.post("/build-and-upload")
-async def build_and_upload_endpoint(index_jsx: UploadFile = File(None)):
+async def build_and_upload_endpoint(app_jsx: UploadFile = File(None)):
     """
     Build and upload Expo app endpoint
 
@@ -406,26 +317,27 @@ async def build_and_upload_endpoint(index_jsx: UploadFile = File(None)):
     6. Returns deployment information
     """
     try:
-        index_jsx_content = None
+        app_jsx_content = None
 
-        if index_jsx:
+        if app_jsx:
             # Validate file type
-            if not index_jsx.filename.endswith((".jsx", ".js")):
+            if not app_jsx.filename.endswith((".jsx", ".js")):
                 raise HTTPException(
                     status_code=400, detail="File must be a .jsx or .js file"
                 )
 
             # Read the uploaded file content
-            content = await index_jsx.read()
-            index_jsx_content = content.decode("utf-8")
-            print(f"📄 Received custom index.jsx file: {index_jsx.filename}")
+            content = await app_jsx.read()
+            app_jsx_content = content.decode("utf-8")
+            print(f"📄 Received custom index.jsx file: {app_jsx.filename}")
 
-        result = await build_service.build_and_upload(index_jsx_content)
+        result = await build_service.build_and_upload(app_jsx_content)
         return JSONResponse(
             status_code=200,
             content={
                 "success": True,
                 "message": "Build and upload completed successfully",
+                "deploymentId": result["deploymentId"],
                 "data": result,
             },
         )

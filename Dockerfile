@@ -31,7 +31,7 @@ WORKDIR /app
 
 # Copy all files to app directory first
 COPY . /app
-COPY ./template-app/ /app/template-app
+COPY ./template-web-app/ /app/template-web-app
 
 # Install Node.js dependencies
 WORKDIR /app/template-app
