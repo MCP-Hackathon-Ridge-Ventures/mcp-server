@@ -26,3 +26,4 @@
 2025-06-15 14:18:28,154 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
 2025-06-15 14:36:14,303 - FastMCP.fastmcp.server.server - INFO - Starting MCP server 'MicroApp' with transport 'stdio'
 2025-06-15 15:07:57,494 - kit.summaries - WARNING - File /var/folders/xl/zb17p_vn1zldv1t3ptjftwkc0000gn/T/tmpcfgg2a_m/previous_app_code.jsx is empty or contains only whitespace. Skipping summary.
+2025-06-15 15:25:24,397 - kit.summaries - WARNING - File /tmp/tmpz1xm68h3/previous_app_code.jsx is empty or contains only whitespace. Skipping summary.
