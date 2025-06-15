@@ -40,7 +40,7 @@ mcp = FastMCP(name="MicroApp")
 
 
 @mcp.tool()
-async def generate_mobile_app(user_request: str) -> bool:
+async def generate_mobile_app(user_request: str) -> dict[str, str]:
     """This is a tool to generate a mobile app based on any user request. If a user asks for a mobile app, this tool will be used to generate the app.
     The mobile app will be generated using the user request and the app will be sent to the user's phone.
     Please notify the user that the app is being generated and will be sent to their phone soon.
