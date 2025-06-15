@@ -3,9 +3,10 @@ name = "mcp-server"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "aiofiles>=24.1.0",
+    "enrichmcp[sqlalchemy]>=0.4.1",
     "fastapi>=0.115.12",
     "httpx>=0.28.1",
     "langchain>=0.3.25",
