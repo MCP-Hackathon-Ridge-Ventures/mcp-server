@@ -39,9 +39,6 @@ RUN npm ci
 # Copy the rest of the Node.js application files
 COPY template-web-app/ ./
 
-# Build the Node.js application
-RUN npm run build
-
 # Switch back to main app directory
 WORKDIR /app
 
