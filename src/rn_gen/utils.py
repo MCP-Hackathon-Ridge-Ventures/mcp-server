@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from langchain_core.utils.utils import secret_from_env
 from langchain_openai import ChatOpenAI
-from pydantic import Field, SecretStr, BaseModel
+from pydantic import BaseModel, Field, SecretStr
 
 load_dotenv()
 
@@ -43,8 +43,8 @@ class AppMetadata(BaseModel):
 
     name: str = Field(description="The name of the app")
     description: str = Field(description="The description of the app")
-    category: list[str] = Field(
-        description="The category of the app. Examples include Health, Design, Productivity, Utilities, etc."
+    category: str = Field(
+        description="A single value of the category of the app. Examples include Health, Design, Productivity, Utilities, etc."
     )
     tags: list[str] = Field(
         description="The set of three tags of the app. Examples include [Weather, Forecast, Location], [Todo, Tasks, Productivity], etc."
