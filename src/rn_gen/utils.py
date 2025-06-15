@@ -11,6 +11,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.models import MiniApp
 from src.supabase import session
 
+from log import logger
+
 load_dotenv()
 
 
@@ -65,7 +67,7 @@ def insert_into_db(mini_app: MiniApp) -> bool:
         success = True
     except SQLAlchemyError as e:
         session.rollback()
-        print(f"Insertion failed: {str(e)}")
+        logger.error(f"Insertion failed: {str(e)}")
     finally:
         session.close()
 

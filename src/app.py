@@ -1,7 +1,8 @@
 from fastapi import FastAPI, BackgroundTasks
 from src.rn_gen import generate_app, generate_metadata, build_and_upload_to_supabase
+from log import logger
 
-app = FastAPI()
+app = FastAPI(title="MicroApp")
 
 
 @app.get("/")
@@ -15,9 +16,9 @@ def generate_app_background(user_request: str):
         res = generate_app(user_request)
         metadata = generate_metadata(user_request)
         build_and_upload_to_supabase(res, metadata)
-        print(f"App generated successfully for request: {user_request}")
+        logger.info(f"App generated successfully for request: {user_request}")
     except Exception as e:
-        print(f"Error generating app: {e}")
+        logger.error(f"Error generating app: {e}")
 
 
 @app.post("/generate-app")

@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from log import logger
+
 from src.supabase import supabase
 
 
@@ -38,19 +40,19 @@ class BuildService:
         temp_dir = Path(tempfile.mkdtemp(prefix="expo_build_"))
         temp_app_dir = temp_dir / "app"
 
-        print(f"📋 Creating temporary build directory: {temp_app_dir}")
+        logger.info(f"📋 Creating temporary build directory: {temp_app_dir}")
 
         try:
             # Copy the entire template-app directory
             shutil.copytree(template_app_dir, temp_app_dir)
-            print("📁 Template app copied successfully")
+            logger.info("📁 Template app copied successfully")
 
             # Write the custom index.jsx content as App.jsx
             app_file_path = temp_app_dir / "src" / "App.jsx"
             with open(app_file_path, "w") as f:
                 f.write(app_jsx_content)
 
-            print(f"✅ Custom App.jsx written to: {app_file_path}")
+            logger.info(f"✅ Custom App.jsx written to: {app_file_path}")
 
             return temp_app_dir
 
@@ -65,9 +67,9 @@ class BuildService:
         try:
             if temp_dir.exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
-                print(f"🧹 Cleaned up temporary directory: {temp_dir}")
+                logger.info(f"🧹 Cleaned up temporary directory: {temp_dir}")
         except Exception as e:
-            print(f"⚠️ Warning: Failed to clean up temporary directory: {e}")
+            logger.error(f"⚠️ Warning: Failed to clean up temporary directory: {e}")
 
     def get_all_files(self, dir_path: Path) -> List[Path]:
         """Recursively get all files from directory"""
@@ -85,14 +87,14 @@ class BuildService:
 
     def run_html_export(self, template_app_dir: Path) -> None:
         """Run npm build command"""
-        print("📦 Building HTML app...")
+        logger.info("📦 Building HTML app...")
 
         if not template_app_dir.exists():
             raise FileNotFoundError("template-app directory not found!")
 
         try:
             # First run npm install to ensure dependencies are installed
-            print("   Running: npm install")
+            logger.info("   Running: npm install")
             install_result = subprocess.run(
                 ["npm", "install"], cwd=template_app_dir, capture_output=True, text=True
             )
@@ -103,11 +105,11 @@ class BuildService:
                     if install_result.stderr
                     else "npm install failed"
                 )
-                print(f"   ⚠️ npm install warning: {error_msg}")
+                logger.warning(f"   ⚠️ npm install warning: {error_msg}")
             else:
-                print("   ✅ npm install completed")
+                logger.info("   ✅ npm install completed")
 
-            print("   Running: npm run build")
+            logger.info("   Running: npm run build")
 
             # Set environment variables
             env = os.environ.copy()
@@ -128,7 +130,7 @@ class BuildService:
                 )
                 raise RuntimeError(f"Build failed: {error_msg}")
 
-            print("✅ Build completed successfully")
+            logger.info("✅ Build completed successfully")
 
         except Exception as e:
             raise RuntimeError(f"Failed to run build: {str(e)}")
@@ -139,7 +141,7 @@ class BuildService:
         """Main function to build the app locally"""
         temp_app_dir = None
         try:
-            print("🚀 Starting build process...")
+            logger.info("🚀 Starting build process...")
 
             # Step 1: Set up the build directory
             current_dir = Path(__file__).parent
@@ -163,25 +165,25 @@ class BuildService:
             if not dist_dir.exists():
                 raise FileNotFoundError("dist folder not found after build!")
 
-            print("📁 Found dist folder, scanning files...")
+            logger.info("📁 Found dist folder, scanning files...")
 
             # Step 3: Get all files from dist directory recursively
             all_files = self.get_all_files(dist_dir)
-            print(f"📊 Found {len(all_files)} files in dist output")
+            logger.info(f"📊 Found {len(all_files)} files in dist output")
 
             # Step 4: Optionally copy files to output directory
             if output_dir:
                 output_dir = Path(output_dir)
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                print(f"📂 Copying build output to: {output_dir}")
+                logger.info(f"📂 Copying build output to: {output_dir}")
 
                 # Copy entire dist directory to output directory
                 if output_dir.exists():
                     shutil.rmtree(output_dir, ignore_errors=True)
                 shutil.copytree(dist_dir, output_dir)
 
-                print(f"✅ Build output copied to: {output_dir}")
+                logger.info(f"✅ Build output copied to: {output_dir}")
 
             build_id = str(uuid.uuid4())
 
@@ -203,7 +205,7 @@ class BuildService:
             }
 
         except Exception as error:
-            print(f"❌ Error: {str(error)}")
+            logger.error(f"❌ Error: {str(error)}")
             raise RuntimeError(str(error))
         finally:
             # Clean up temporary directory if it was created
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     try:
         # Build with default template
         result = build_app_local(output_dir="./build_output")
-        print(f"Build successful: {result}")
+        logger.info(f"Build successful: {result}")
 
         # Or build with custom JSX content
         # custom_jsx = """
@@ -279,4 +281,4 @@ if __name__ == "__main__":
         # print(f"Custom build successful: {result}")
 
     except Exception as e:
-        print(f"Build failed: {e}")
+        logger.error(f"Build failed: {e}")

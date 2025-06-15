@@ -10,7 +10,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from src.js_bundle_upload.main import build_app_local
 from src.models import MiniApp
 from src.supabase import supabase
-
+from log import logger
 from .prompt import METADATA_PROMPT, PROMPT
 from .utils import AppMetadata, AppSpec, OpenRouterClient, insert_into_db
 
@@ -78,7 +78,7 @@ def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -
         temp_file.write(app_spec.app_jsx.encode("utf-8"))
 
         result = build_app_local(app_spec.app_jsx)
-        print(result)
+        logger.info(result)
 
         # Create a MiniApp object
         mini_app = MiniApp(
@@ -101,7 +101,7 @@ def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -
         return success
 
     except Exception as e:
-        print(f"Error uploading to Supabase: {str(e)}")
+        logger.error(f"Error uploading to Supabase: {str(e)}")
         return False
     finally:
         temp_file.close()
