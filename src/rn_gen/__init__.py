@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 
-from js_bundle_upload.main import build_app_local
+from src.js_bundle_upload.main import build_app_local
 from .prompt import PROMPT, METADATA_PROMPT
 from .utils import AppSpec, OpenRouterClient, AppMetadata
 from src.supabase import supabase
@@ -57,7 +57,7 @@ def generate_metadata(user_request: str) -> dict:
     return output
 
 
-def build_and_upload_to_supabase(app_spec: AppSpec) -> bool:
+def build_and_upload_to_supabase(app_spec: AppSpec, app_metadata: AppMetadata) -> bool:
     """Upload app specification to Supabase database.
 
     Args:
@@ -72,13 +72,14 @@ def build_and_upload_to_supabase(app_spec: AppSpec) -> bool:
         temp_file.write(app_spec.app_jsx.encode("utf-8"))
 
         result = build_app_local(app_spec.app_jsx)
+        print(result)
 
         data = {
-            "name": app_spec.name,
-            "description": app_spec.description,
-            "category": app_spec.category,
-            "tags": app_spec.tags,
-            "deployment_id": result["deployment_id"],  # Will be set after step 1,
+            "name": app_metadata.name,
+            "description": app_metadata.description,
+            "category": app_metadata.category,
+            "tags": app_metadata.tags,
+            "deployment_id": result["buildId"],  # Will be set after step 1,
             "icon_url": None,
             "version": "1.0.0",
             # Generate a random rating between 4.1 and 5

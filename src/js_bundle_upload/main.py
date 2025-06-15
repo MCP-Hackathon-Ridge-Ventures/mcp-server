@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
+from src.supabase import supabase
 
 
 class BuildService:
@@ -181,6 +182,13 @@ class BuildService:
                 print(f"✅ Build output copied to: {output_dir}")
 
             build_id = str(uuid.uuid4())
+
+            # Upload files to supabase storage
+            for file in all_files:
+                supabase.storage.from_("apps").upload(
+                    file=file,
+                    path=f"deployments/{build_id}/{file.name}",
+                )
 
             return {
                 "success": True,
