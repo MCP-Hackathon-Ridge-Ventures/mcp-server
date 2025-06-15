@@ -23,6 +23,9 @@ User Request (Changes to the app):
 Previous App Code:
 {previous_app_code}
 
+Previous App Code Summary:
+{summary}
+
 Return your code ONLY in the following format (strictly):
 
 {format_instructions}

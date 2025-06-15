@@ -20,10 +20,19 @@ from .utils import (
     insert_into_db,
     update_app_in_db,
 )
+from kit.summaries import OpenAIConfig, AnthropicConfig, GoogleConfig
+from kit.repository import Repository
+
 
 load_dotenv()
 
 llm = OpenRouterClient(model_name="anthropic/claude-sonnet-4")
+
+openrouter_config = OpenAIConfig(
+    api_key=os.getenv("OPENROUTER_API_KEY"),  # Replace with your OpenRouter key
+    model="anthropic/claude-sonnet-4",  # Example model on OpenRouter
+    base_url="https://openrouter.ai/api/v1",
+)
 
 
 def generate_app(user_request: str) -> AppSpec:
@@ -77,11 +86,24 @@ def edit_app(user_request: str, previous_app_code: str) -> AppSpec:
     prompt = PromptTemplate.from_template(EDITOR_PROMPT)
     parser = PydanticOutputParser(pydantic_object=AppSpec)
 
+    # Create a temp folder to store the previous_app_code
+    temp_folder = tempfile.mkdtemp()
+    with open(os.path.join(temp_folder, "previous_app_code.jsx"), "w") as file:
+        file.write(previous_app_code)
+
+    repo = Repository(path_or_url=temp_folder)
+    summarizer = repo.get_summarizer(config=openrouter_config)
+
+    # Use kit to explain previous_app_code
+    path_to_previous_app_code = os.path.join(temp_folder, "previous_app_code.jsx")
+    summary = summarizer.summarize_file(path_to_previous_app_code)
+
     chain = prompt | llm | parser
 
     return chain.invoke(
         {
             "prompt": p,
+            "summary": summary,
             "user_request": user_request,
             "previous_app_code": previous_app_code,
             "format_instructions": parser.get_format_instructions(),
