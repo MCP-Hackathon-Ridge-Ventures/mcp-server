@@ -9,12 +9,10 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from src.js_bundle_upload.main import build_app_local
 from src.models import MiniApp
-from src.rn_gen.prompt import METADATA_PROMPT, PROMPT
-from src.rn_gen.utils import AppMetadata, AppSpec, OpenRouterClient, insert_into_db
 from src.supabase import supabase
 
 from .prompt import METADATA_PROMPT, PROMPT
-from .utils import AppMetadata, AppSpec, OpenRouterClient
+from .utils import AppMetadata, AppSpec, OpenRouterClient, insert_into_db
 
 load_dotenv()
 
