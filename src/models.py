@@ -1,10 +1,8 @@
-from enrichmcp.sqlalchemy import EnrichSQLAlchemyMixin
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Column, Integer, String, Float, Boolean
 
 
-# From EnrichMCP docs
-class Base(DeclarativeBase, EnrichSQLAlchemyMixin):
+class Base(DeclarativeBase):
     pass
 
 

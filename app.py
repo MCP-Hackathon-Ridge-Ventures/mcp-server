@@ -7,7 +7,7 @@ from fastapi import FastAPI
 import httpx
 from pydantic import Field
 
-from enrichmcp import EnrichContext, EnrichMCP, EnrichModel, Relationship
+from fastmcp import FastMCP
 
 from src.rn_gen import build_and_upload_to_supabase, generate_app, generate_metadata
 
@@ -26,14 +26,14 @@ async def create_app_request(user_request: str):
         return {"error": str(e)}
 
 
-# EnrichMCP app
-mcp = EnrichMCP(
-    title="MicroApp",
+# FastMCP app
+mcp = FastMCP(
+    name="MicroApp",
     description="MicroApp is a platform for creating and sharing micro-apps.",
 )
 
 
-@mcp.resource
+@mcp.tool()
 async def generate_mobile_app(user_request: str) -> bool:
     """Generate an app based on user request.
 
@@ -44,7 +44,8 @@ async def generate_mobile_app(user_request: str) -> bool:
         bool: True if the app was generated successfully, False otherwise.
     """
     try:
-        return await create_app_request(user_request)
+        result = await create_app_request(user_request)
+        return result.get("success", False)
     except Exception as e:
         print(f"Error generating app: {e}")
         return False
